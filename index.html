@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Personalized Sprint Simulator - Happy Birthday Veronica!</title>
+    <style>
+        :root {
+            --bg-color: #f4f5f7;
+            --card-bg: #ffffff;
+            --text-main: #172b4d;
+            --text-muted: #5e6c84;
+            --primary: #0052cc;
+            --primary-hover: #0043a6;
+            --success: #36b37e;
+            --warning: #ffab00;
+            --danger: #ff5630;
+            --bar-bg: #dfe1e6;
+        }
+
+        * {
+            box-sizing: border-box;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            user-select: none;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            overflow: hidden;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        h1 { margin: 0 0 10px 0; font-size: 28px; }
+        p.subtitle { margin: 0; color: var(--text-muted); font-size: 16px; }
+
+        .game-board {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+            justify-content: center;
+            z-index: 10;
+        }
+
+        .dev-card {
+            background: var(--card-bg);
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(9, 30, 66, 0.08);
+            width: 260px;
+            padding: 24px;
+            text-align: center;
+            transition: transform 0.2s ease;
+        }
+
+        .dev-card:hover {
+            transform: translateY(-4px);
+        }
+
+        .avatar-container {
+            width: 80px;
+            height: 80px;
+            margin: 0 auto 10px auto;
+            border-radius: 50%;
+            overflow: hidden; /* Important for circular crop */
+            border: 3px solid var(--bar-bg);
+        }
+
+        .avatar-img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover; /* Ensures the image fills the circle neatly */
+        }
+
+        .dev-name {
+            font-size: 20px;
+            font-weight: 600;
+            margin: 0 0 5px 0;
+        }
+
+        .dev-status {
+            font-size: 13px;
+            color: var(--text-muted);
+            min-height: 20px;
+            margin-bottom: 15px;
+            font-style: italic;
+        }
+
+        .mood-container {
+            margin-bottom: 20px;
+        }
+
+        .mood-label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            font-weight: 600;
+            margin-bottom: 6px;
+            color: var(--text-muted);
+        }
+
+        .progress-bg {
+            background: var(--bar-bg);
+            height: 12px;
+            border-radius: 6px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: var(--primary);
+            width: 50%;
+            border-radius: 6px;
+            transition: width 0.3s ease, background-color 0.3s ease;
+        }
+
+        .actions {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        button {
+            border: none;
+            border-radius: 6px;
+            padding: 10px 16px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .btn-task {
+            background-color: var(--primary);
+            color: white;
+        }
+
+        .btn-task:hover:not(:disabled) { background-color: var(--primary-hover); }
+
+        .btn-salary {
+            background-color: transparent;
+            color: var(--primary);
+            border: 1px solid var(--primary);
+        }
+
+        .btn-salary:hover:not(:disabled) {
+            background-color: rgba(0, 82, 204, 0.1);
+        }
+
+        /* Modals */
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(9, 30, 66, 0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.4s ease;
+        }
+
+        .modal-overlay.active {
+            opacity: 1;
+            pointer-events: all;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 40px;
+            border-radius: 16px;
+            text-align: center;
+            max-width: 400px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            transform: scale(0.8);
+            transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .modal-overlay.active .modal-content {
+            transform: scale(1);
+        }
+
+        .modal-content h2 { margin-top: 0; font-size: 28px; }
+        .modal-content p { color: var(--text-muted); font-size: 16px; margin-bottom: 24px; line-height: 1.5; }
+        .modal-btn {
+            background: var(--success);
+            color: white;
+            font-size: 16px;
+            padding: 12px 24px;
+            border-radius: 8px;
+        }
+        .modal-btn.fail { background: var(--danger); }
+        .modal-btn:hover { filter: brightness(1.1); }
+
+        canvas#confetti {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            pointer-events: none;
+            z-index: 50;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>Sprint Simulator 🏃‍♂️💨</h1>
+        <p class="subtitle">Personalized Edition for Veronica's Team!</p>
+    </header>
+
+    <div class="game-board" id="board">
+        </div>
+
+    <canvas id="confetti"></canvas>
+
+    <div class="modal-overlay" id="win-modal">
+        <div class="modal-content">
+            <h2>🎉 Happy Birthday, Veronica! 🎉</h2>
+            <p><strong>You are the best Project Manager!</strong><br><br>You successfully survived the sprint, managed the chaos, and kept the team happy.</p>
+            <button class="modal-btn" onclick="initGame()">Play Again</button>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="lose-modal">
+        <div class="modal-content">
+            <h2>💥 Sprint Failed! 💥</h2>
+            <p id="fail-message">Someone burned out and deleted the production database!</p>
+            <button class="modal-btn fail" onclick="initGame()">Retry Sprint</button>
+        </div>
+    </div>
+
+    <script>
+        // --- Game State (Updated with personalization) ---
+        let developers = [];
+        let gameLoop;
+        let isGameOver = false;
+
+        // Personalized funny statuses based on roles
+        const personalizedStatuses = {
+            qa: [
+                "Testing Ira's broken PR...", 
+                "Writing bugs... I mean, finding bugs", 
+                "Wait, why is this passing?", 
+                "Is this a feature or a bug? 🤔", 
+                "Googling how to use Selenium",
+                "Reviewing acceptance criteria"
+            ],
+            frontend: [
+                "Rewriting CSS... Works on my machine 🤷‍♀️", 
+                "Fixing bugs... or adding new ones?", 
+                "Googling how to center a div... again", 
+                "Reading StackOverflow",
+                "Waiting for CI/CD pipeline",
+                "Rewriting the whole UI again"
+            ],
+            backend: [
+                "Merging conflicts... Again.", 
+                "Googling how to fix a merge conflict", 
+                "Debugging memory leak... still", 
+                "Fixing memory leaks... or just ignoring them?", 
+                "Optimizing queries",
+                "Reading documentation... maybe"
+            ],
+            general: [
+                "Fixing bugs...", 
+                "Works on my machine 🤷‍♂️", 
+                "Googling how to center a div", 
+                "Waiting for CI/CD pipeline"
+            ]
+        };
+
+        // --- Audio System (No external files) ---
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        function playTone(freq, type, duration, vol=0.1) {
+            if(audioCtx.state === 'suspended') audioCtx.resume();
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = type;
+            osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+            gain.gain.setValueAtTime(vol, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + duration);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start();
+            osc.stop(audioCtx.currentTime + duration);
+        }
+
+        const sounds = {
+            click: () => playTone(600, 'sine', 0.1),
+            good: () => playTone(800, 'sine', 0.15),
+            bad: () => playTone(200, 'sawtooth', 0.2, 0.05),
+            win: () => {
+                [523.25, 659.25, 783.99, 1046.50].forEach((freq, i) => {
+                    setTimeout(() => playTone(freq, 'sine', 0.3, 0.1), i * 150);
+                });
+            },
+            lose: () => {
+                [300, 250, 200, 150].forEach((freq, i) => {
+                    setTimeout(() => playTone(freq, 'sawtooth', 0.4, 0.05), i * 250);
+                });
+            }
+        };
+
+        // --- Core Logic ---
+        function initGame() {
+            document.getElementById('win-modal').classList.remove('active');
+            document.getElementById('lose-modal').classList.remove('active');
+            stopConfetti();
+            isGameOver = false;
+
+            // Updated with specific names, roles, and Slack image URLs
+            developers = [
+                { id: 0, name: 'Slava (QA)', avatarUrl: 'https://ca.slack-edge.com/T6XDZHUJH-UPU7YUU1F-954840d26b26-72', role: 'qa', mood: getRandomMood(), status: 'Ready for the sprint', cooldown: false },
+                { id: 1, name: 'Ira (Frontend)', avatarUrl: 'https://ca.slack-edge.com/T6XDZHUJH-U06KQ2X5DMM-24e194b9d555-512', role: 'frontend', mood: getRandomMood(), status: 'Drinking 3rd coffee', cooldown: false },
+                { id: 2, name: 'Vitalii (Backend)', avatarUrl: 'https://ca.slack-edge.com/T6XDZHUJH-U02A5MU1QAF-8979dd06ceb0-512', role: 'backend', mood: getRandomMood(), status: 'Setting up environment', cooldown: false }
+            ];
+
+            renderBoard();
+            clearInterval(gameLoop);
+            gameLoop = setInterval(passiveUpdate, 3000);
+        }
+
+        function getRandomMood() {
+            return Math.floor(Math.random() * 31) + 40; // 40 to 70
+        }
+
+        function getRandomStatus(role) {
+            const statuses = personalizedStatuses[role] || personalizedStatuses.general;
+            return statuses[Math.floor(Math.random() * statuses.length)];
+        }
+
+        function getMoodColor(mood) {
+            if (mood > 70) return 'var(--success)';
+            if (mood > 30) return 'var(--warning)';
+            return 'var(--danger)';
+        }
+
+        // --- Actions ---
+        window.giveTask = function(id) {
+            if (isGameOver || developers[id].cooldown) return;
+            triggerCooldown(id);
+            
+            const dev = developers[id];
+            const rand = Math.random();
+            
+            if (rand < 0.33) {
+                dev.mood += 5;
+                dev.status = "✅ Easy task (+5)";
+                sounds.good();
+            } else if (rand < 0.66) {
+                dev.mood -= 5;
+                dev.status = "⚠️ Medium task (-5)";
+                sounds.bad();
+            } else {
+                dev.mood -= 15;
+                dev.status = "🔥 Hard task (-15)";
+                sounds.bad();
+            }
+            
+            checkLimits(dev);
+        };
+
+        window.increaseSalary = function(id) {
+            if (isGameOver || developers[id].cooldown) return;
+            triggerCooldown(id);
+            sounds.good();
+            
+            const dev = developers[id];
+            dev.mood += 15;
+            dev.status = "💸 Yay, money! (+15)";
+            checkLimits(dev);
+        };
+
+        function triggerCooldown(id) {
+            developers[id].cooldown = true;
+            renderBoard();
+            setTimeout(() => {
+                developers[id].cooldown = false;
+                if (!isGameOver) renderBoard();
+            }, 800); // 0.8s cooldown to prevent instant winning
+        }
+
+        function passiveUpdate() {
+            if (isGameOver) return;
+            
+            developers.forEach(dev => {
+                dev.mood -= 3; // Passive drain
+                
+                // 10% chance for random event
+                if (Math.random() < 0.1) {
+                    if (Math.random() < 0.5) {
+                        dev.mood -= 10;
+                        dev.status = "🐛 Bug in production! (-10)";
+                        sounds.bad();
+                    } else {
+                        dev.mood += 5;
+                        dev.status = "☕ Free pizza & coffee (+5)";
+                        sounds.good();
+                    }
+                } else if (Math.random() < 0.3) {
+                    // Sometimes naturally cycle status texts if no event occurred
+                    dev.status = getRandomStatus(dev.role);
+                }
+                
+                checkLimits(dev);
+            });
+        }
+
+        function checkLimits(dev) {
+            dev.mood = Math.max(0, Math.min(100, dev.mood));
+            renderBoard();
+
+            if (dev.mood === 0 && !isGameOver) {
+                endGame(false, `${dev.name} rage-quit and took the source code with them!`);
+            } else if (developers.every(d => d.mood === 100) && !isGameOver) {
+                endGame(true);
+            }
+        }
+
+        function endGame(isWin, msg = "") {
+            isGameOver = true;
+            clearInterval(gameLoop);
+            
+            setTimeout(() => {
+                if (isWin) {
+                    sounds.win();
+                    document.getElementById('win-modal').classList.add('active');
+                    startConfetti();
+                } else {
+                    sounds.lose();
+                    document.getElementById('fail-message').innerText = msg;
+                    document.getElementById('lose-modal').classList.add('active');
+                }
+            }, 500);
+        }
+
+        // --- Rendering ---
+        function renderBoard() {
+            const board = document.getElementById('board');
+            board.innerHTML = '';
+
+            developers.forEach(dev => {
+                const color = getMoodColor(dev.mood);
+                const disabledStr = (dev.cooldown || isGameOver) ? 'disabled' : '';
+
+                board.innerHTML += `
+                    <div class="dev-card">
+                        <div class="avatar-container">
+                            <img src="${dev.avatarUrl}" alt="${dev.name}" class="avatar-img" />
+                        </div>
+                        <h3 class="dev-name">${dev.name}</h3>
+                        <div class="dev-status">${dev.status}</div>
+                        
+                        <div class="mood-container">
+                            <div class="mood-label">
+                                <span>Mood</span>
+                                <span>${dev.mood}%</span>
+                            </div>
+                            <div class="progress-bg">
+                                <div class="progress-fill" style="width: ${dev.mood}%; background-color: ${color}"></div>
+                            </div>
+                        </div>
+
+                        <div class="actions">
+                            <button class="btn-task" onclick="giveTask(${dev.id})" ${disabledStr}>Give Task</button>
+                            <button class="btn-salary" onclick="increaseSalary(${dev.id})" ${disabledStr}>Increase Salary</button>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        // --- Simple Confetti System ---
+        const canvas = document.getElementById('confetti');
+        const ctx = canvas.getContext('2d');
+        let particles = [];
+        let confettiAnimation;
+
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        function startConfetti() {
+            particles = [];
+            const colors = ['#0052cc', '#36b37e', '#ffab00', '#ff5630', '#6554c0'];
+            for (let i = 0; i < 150; i++) {
+                particles.push({
+                    x: canvas.width / 2,
+                    y: canvas.height / 2 + 100,
+                    r: Math.random() * 6 + 4,
+                    dx: Math.random() * 10 - 5,
+                    dy: Math.random() * -10 - 5,
+                    color: colors[Math.floor(Math.random() * colors.length)],
+                    tilt: Math.random() * 10
+                });
+            }
+            drawConfetti();
+        }
+
+        function drawConfetti() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            particles.forEach((p, i) => {
+                p.dy += 0.2; // gravity
+                p.x += p.dx;
+                p.y += p.dy;
+                p.tilt += 0.1;
+
+                ctx.beginPath();
+                ctx.lineWidth = p.r;
+                ctx.strokeStyle = p.color;
+                ctx.moveTo(p.x + p.tilt, p.y);
+                ctx.lineTo(p.x + p.tilt, p.y + p.tilt + p.r);
+                ctx.stroke();
+
+                if (p.y > canvas.height) particles.splice(i, 1);
+            });
+            
+            if (particles.length > 0) {
+                confettiAnimation = requestAnimationFrame(drawConfetti);
+            }
+        }
+
+        function stopConfetti() {
+            cancelAnimationFrame(confettiAnimation);
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
+
+        // Start game on load
+        initGame();
+        
+        // Setup initial sound unlock on first click anywhere
+        document.body.addEventListener('click', () => {
+            if(audioCtx.state === 'suspended') audioCtx.resume();
+        }, { once: true });
+    </script>
+</body>
+</html>
